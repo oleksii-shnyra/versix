@@ -1,0 +1,22 @@
+{
+    "compilerOptions": {
+        "module": "amd",
+        "declaration": false,
+        "noImplicitAny": false,
+        "removeComments": true,
+        "noLib": false,
+        "allowSyntheticDefaultImports": true,
+        "emitDecoratorMetadata": true,
+        "experimentalDecorators": true,
+        "target": "es2017",
+        "sourceMap": true,
+        "allowJs": true,
+        "outFile": "./dist/versix.js",
+        "rootDir": "./src"
+    },
+    "exclude": [
+        "node_modules",
+        "**/*.spec.ts",
+        "dist"
+    ]
+}
