@@ -26,6 +26,7 @@ define("src/versix-lib/interface", ["require", "exports"], function (require, ex
         TokenType["name"] = "name";
         TokenType["op"] = "op";
         TokenType["kw"] = "kw";
+        TokenType["CallExpression"] = "CallExpression";
         TokenType["ExpressionStatement"] = "ExpressionStatement";
         TokenType["NumberLiteral"] = "NumberLiteral";
         TokenType["StringLiteral"] = "StringLiteral";
@@ -40,9 +41,6 @@ define("src/versix-lib/interface", ["require", "exports"], function (require, ex
         DataType["number"] = "number";
         DataType["string"] = "string";
         DataType["vector"] = "vector";
-        DataType["vector1"] = "vector_1";
-        DataType["vector2"] = "vector_2";
-        DataType["vector3"] = "vector_3";
     })(DataType = exports.DataType || (exports.DataType = {}));
     class TokenNumber {
     }
@@ -91,14 +89,26 @@ define("src/versix-lib/runner/built-in-func", ["require", "exports", "src/versix
         ColoredConsole["BgCyan"] = "\u001B[46m";
         ColoredConsole["BgWhite"] = "\u001B[47m";
     })(ColoredConsole || (ColoredConsole = {}));
+    const prettyArgument = (args) => {
+        if (args.length === 1) {
+            const [o] = args;
+            return [{
+                    type: o.dataType === interface_1.DataType.vector ? `vector ${o.value.length}` : o.tokenType,
+                    o,
+                }, o.value];
+        }
+        else {
+            return args;
+        }
+    };
     exports.builtInFuncs = {
         print: {
             func(...args) {
                 if (runningInBrowser) {
-                    console.log(`%cprint ==>`, 'color: green', ...args);
+                    console.log(`%cprint ==>`, 'color: green', ...prettyArgument(args));
                 }
                 else {
-                    console.log(`${ColoredConsole.FgGreen}print ==>`, ...args);
+                    console.log(`${ColoredConsole.FgGreen}print ==>`, ...prettyArgument(args));
                 }
             },
         },
@@ -374,7 +384,8 @@ define("src/versix-lib/parser/parser", ["require", "exports", "src/versix-lib/in
             while (this.current < this.tokens.length) {
                 const r = this.parseToken(this.tokens, this.current, this.ast);
                 if (!r) {
-                    break;
+                    this.current++;
+                    continue;
                 }
                 this.current = r.current;
                 this.ast.push(r.node);
@@ -409,7 +420,7 @@ define("src/versix-lib/parser/parser", ["require", "exports", "src/versix-lib/in
             const token = tokens[current];
             if (token) {
                 if (token.tokenType === interface_6.TokenType.newLine) {
-                    return this.parseToken(tokens, current + 1, paramsArr);
+                    return;
                 }
                 switch (token.tokenType) {
                     case interface_6.TokenType.data:
@@ -417,7 +428,16 @@ define("src/versix-lib/parser/parser", ["require", "exports", "src/versix-lib/in
                             case interface_6.DataType.number: return this.parseNumber(tokens, current);
                             case interface_6.DataType.string: return this.parseString(tokens, current);
                         }
-                    case interface_6.TokenType.name: return this.parseName(tokens, current, paramsArr);
+                    case interface_6.TokenType.paren:
+                        if (token.value === '(') {
+                            return this.parseExpression(tokens, current);
+                        }
+                        return;
+                    case interface_6.TokenType.name:
+                        if (token.value === 'print') {
+                            return this.parseEol(tokens, current);
+                        }
+                        return this.parseName(tokens, current);
                     case interface_6.TokenType.op: return this.parseOperator(tokens, current, paramsArr);
                 }
             }
@@ -435,7 +455,39 @@ define("src/versix-lib/parser/parser", ["require", "exports", "src/versix-lib/in
                 params: [],
             };
         }
-        parseName(tokens, current, paramsArr) {
+        parseEol(tokens, current) {
+            const node = this.getNodeFromToken(tokens, current);
+            let token = tokens[++current];
+            while (token && token.tokenType !== interface_6.TokenType.newLine) {
+                const r = this.parseToken(tokens, current, node.params);
+                if (!r) {
+                    break;
+                }
+                current = r.current;
+                token = tokens[current];
+                node.params.push(r.node);
+            }
+            return { current, node };
+        }
+        parseExpression(tokens, current) {
+            const node = this.getNodeFromToken(tokens, current);
+            node.tokenType = interface_6.TokenType.CallExpression;
+            let token = tokens[++current];
+            while (token && token.tokenType !== interface_6.TokenType.paren && token.value !== ')') {
+                console.log('token', token);
+                const r = this.parseToken(tokens, current, node.params);
+                if (!r) {
+                    console.log('end exp', token);
+                    break;
+                }
+                current = r.current;
+                token = tokens[current];
+                node.params.push(r.node);
+            }
+            current++;
+            return { current, node };
+        }
+        parseName(tokens, current) {
             const node = this.getNodeFromToken(tokens, current);
             let token = tokens[++current];
             while (token && token.tokenType !== interface_6.TokenType.op) {
@@ -475,18 +527,61 @@ define("src/versix-lib/runner/operator-map", ["require", "exports", "src/versix-
     exports.operatorMap = {
         '+': {
             func(a, b) {
-                if (a.tokenType === interface_7.TokenType.NumberLiteral && b.tokenType === interface_7.TokenType.NumberLiteral) {
+                if (a.dataType === interface_7.DataType.vector && b.dataType === interface_7.DataType.vector) {
+                    if (a.value.length !== b.value.length) {
+                        throw new Error('vectors should be of the same dimensions');
+                    }
                     return {
-                        tokenType: interface_7.TokenType.NumberLiteral,
-                        value: a.value + b.value
+                        tokenType: interface_7.TokenType.data,
+                        dataType: interface_7.DataType.vector,
+                        value: a.value.map((e, i) => e + b.value[i]),
                     };
                 }
-                else {
-                    if (a.tokenType === interface_7.TokenType.data && a.dataType === interface_7.DataType.vector && b.tokenType === interface_7.TokenType.NumberLiteral) {
+                else if (b.tokenType !== interface_7.TokenType.NumberLiteral) {
+                    [a, b] = [b, a];
+                }
+                if (b.tokenType === interface_7.TokenType.NumberLiteral) {
+                    if (a.tokenType === interface_7.TokenType.NumberLiteral && b.tokenType === interface_7.TokenType.NumberLiteral) {
+                        return {
+                            tokenType: interface_7.TokenType.NumberLiteral,
+                            value: a.value + b.value
+                        };
+                    }
+                    else if (a.dataType === interface_7.DataType.vector) {
                         return {
                             tokenType: interface_7.TokenType.data,
                             dataType: interface_7.DataType.vector,
                             value: a.value.map(e => e + b.value),
+                        };
+                    }
+                }
+                throw new Error(`operator + received unprocessable operands ${JSON.stringify([a, b])}`);
+            }
+        },
+        '*': {
+            func(a, b) {
+                if (b.tokenType === interface_7.TokenType.NumberLiteral) {
+                    if (a.tokenType === interface_7.TokenType.NumberLiteral) {
+                        return {
+                            tokenType: interface_7.TokenType.NumberLiteral,
+                            value: a.value * b.value
+                        };
+                    }
+                    else if (a.dataType === interface_7.DataType.vector) {
+                        return {
+                            tokenType: interface_7.TokenType.data,
+                            dataType: interface_7.DataType.vector,
+                            value: a.value.map(e => e * b.value),
+                        };
+                    }
+                    else if (a.tokenType === interface_7.TokenType.StringLiteral) {
+                        let value = '';
+                        for (let i = 0; i < b.value; i++) {
+                            value += a.value;
+                        }
+                        return {
+                            tokenType: interface_7.TokenType.StringLiteral,
+                            value,
                         };
                     }
                 }
@@ -528,6 +623,8 @@ define("src/versix-lib/runner/runner", ["require", "exports", "src/versix-lib/in
                     return result;
                 }
                 break;
+            case interface_8.TokenType.CallExpression:
+                return execToken(t.params[0]);
             default:
                 return t;
         }
@@ -537,7 +634,7 @@ define("src/versix-lib/runner/runner", ["require", "exports", "src/versix-lib/in
 define("src/versix-lib/index", ["require", "exports", "src/versix-lib/tokenizer/tokenizer", "src/versix-lib/helper", "src/versix-lib/parser/parser", "src/versix-lib/runner/runner"], function (require, exports, tokenizer_1, helper_1, parser_1, runner_1) {
     "use strict";
     Object.defineProperty(exports, "__esModule", { value: true });
-    const default_program = `v 1 0 1 + 9`;
+    const default_program = `print (v 1 2 3 + v 3 7 1 + 6) * 2`;
     exports.versix = {
         helper: {
             prettyLexLog: helper_1.prettyLexLog,

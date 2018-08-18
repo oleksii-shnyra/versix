@@ -32,6 +32,8 @@ export function execToken(t: Token): Token | void {
                 return result;
             }
             break;
+        case TokenType.CallExpression:
+            return execToken(t.params[0]);
         default:
             return t;
     }

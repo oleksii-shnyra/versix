@@ -14,7 +14,8 @@ export class Parser {
         while (this.current < this.tokens.length) {
             const r = this.parseToken(this.tokens, this.current, this.ast);
             if (!r) {
-                break;
+                this.current++;
+                continue;
             }
             this.current = r.current;
             this.ast.push(r.node);
@@ -53,7 +54,7 @@ export class Parser {
         const token = tokens[current];
         if (token) {
             if (token.tokenType === TokenType.newLine) {
-                return this.parseToken(tokens, current + 1, paramsArr);
+                return;
             }
             switch (token.tokenType) {
                 case TokenType.data:
@@ -61,7 +62,16 @@ export class Parser {
                         case DataType.number: return this.parseNumber(tokens, current);
                         case DataType.string: return this.parseString(tokens, current);
                     }
-                case TokenType.name: return this.parseName(tokens, current, paramsArr);
+                case TokenType.paren:
+                    if (token.value === '(') {
+                        return this.parseExpression(tokens, current);
+                    }
+                    return;
+                case TokenType.name:
+                    if (token.value === 'print') {
+                        return this.parseEol(tokens, current);
+                    }
+                    return this.parseName(tokens, current);
                 case TokenType.op: return this.parseOperator(tokens, current, paramsArr);
             }
             // if (token.tokenType === TokenType.paren && token.value === '(') {
@@ -85,7 +95,41 @@ export class Parser {
         };
     }
 
-    public parseName(tokens: Token[], current: number, paramsArr: Token[]): AstNode | void {
+    public parseEol(tokens: Token[], current: number): AstNode | void {
+        const node = this.getNodeFromToken(tokens, current);
+        let token = tokens[++current];
+        while (token && token.tokenType !== TokenType.newLine) {
+            const r = this.parseToken(tokens, current, node.params);
+            if (!r) {
+                break;
+            }
+            current = r.current;
+            token = tokens[current];
+            node.params.push(r.node);
+        }
+        return { current, node };
+    }
+
+    public parseExpression(tokens: Token[], current: number): AstNode | void {
+        const node = this.getNodeFromToken(tokens, current);
+        node.tokenType = TokenType.CallExpression;
+        let token = tokens[++current];
+        while (token && token.tokenType !== TokenType.paren && token.value !== ')') {
+            console.log('token', token);
+            const r = this.parseToken(tokens, current, node.params);
+            if (!r) {
+                console.log('end exp', token);
+                break;
+            }
+            current = r.current;
+            token = tokens[current];
+            node.params.push(r.node);
+        }
+        current++;
+        return { current, node };
+    }
+
+    public parseName(tokens: Token[], current: number): AstNode | void {
         const node = this.getNodeFromToken(tokens, current);
         let token = tokens[++current];
         while (token && token.tokenType !== TokenType.op) {

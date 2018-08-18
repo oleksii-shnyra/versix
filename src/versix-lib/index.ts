@@ -4,7 +4,7 @@ import { Parser } from "./parser/parser";
 import { run } from "./runner/runner";
 
 const default_program =
-`v 1 0 1 + 9`;
+`print (v 1 2 3 + v 3 7 1 + 6) * 2`;
 
 export const versix = {
     helper: {

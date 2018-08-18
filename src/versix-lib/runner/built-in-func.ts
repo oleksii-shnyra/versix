@@ -34,13 +34,25 @@ enum ColoredConsole {
     BgWhite = '\x1b[47m',
 }
 
+const prettyArgument = (args: any[]): any[] => {
+    if (args.length === 1) {
+        const [o] = args;
+        return [{
+            type: o.dataType === DataType.vector ? `vector ${o.value.length}` : o.tokenType,
+            o,
+        }, o.value];
+    } else {
+        return args;
+    }
+}
+
 export const builtInFuncs = {
     print: {
         func(...args) {
             if (runningInBrowser) {
-                console.log(`%cprint ==>`, 'color: green', ...args);
+                console.log(`%cprint ==>`, 'color: green', ...prettyArgument(args));
             } else {
-                console.log(`${ColoredConsole.FgGreen}print ==>`, ...args);
+                console.log(`${ColoredConsole.FgGreen}print ==>`, ...prettyArgument(args));
             }
         },
     },

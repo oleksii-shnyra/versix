@@ -18,6 +18,7 @@ export enum TokenType {
     name = 'name',
     op = 'op',
     kw = 'kw',
+    CallExpression = 'CallExpression',
     ExpressionStatement = 'ExpressionStatement',
     NumberLiteral = 'NumberLiteral',
     StringLiteral = 'StringLiteral',
@@ -32,9 +33,6 @@ export enum DataType {
     number = 'number',
     string = 'string',
     vector = 'vector',
-    vector1 = 'vector_1',
-    vector2 = 'vector_2',
-    vector3 = 'vector_3',
 }
 
 export class TokenNumber implements Token {
