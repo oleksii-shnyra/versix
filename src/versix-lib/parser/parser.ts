@@ -115,10 +115,8 @@ export class Parser {
         node.tokenType = TokenType.CallExpression;
         let token = tokens[++current];
         while (token && token.tokenType !== TokenType.paren && token.value !== ')') {
-            console.log('token', token);
             const r = this.parseToken(tokens, current, node.params);
             if (!r) {
-                console.log('end exp', token);
                 break;
             }
             current = r.current;
