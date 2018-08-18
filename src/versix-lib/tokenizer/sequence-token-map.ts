@@ -7,8 +7,8 @@ const sequential: {
 } = {};
 
 [
-    ['[', TokenType.brack],
-    [']', TokenType.brack],
+    ['[', TokenType.brac],
+    [']', TokenType.brac],
     ['(', TokenType.paren],
     [')', TokenType.paren],
     ['{', TokenType.curly],

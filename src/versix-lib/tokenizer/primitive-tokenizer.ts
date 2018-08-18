@@ -1,4 +1,6 @@
-import { TokenType, BuiltInFunc } from "../interface";
+import { DataType } from '../interface';
+import { builtInFuncs } from '../runner/built-in-func';
+import { TokenType } from "../interface";
 import { TokenizerResult } from "./tokenizer-result";
 import { sequenceTokenTrie } from "./sequence-token-map";
 
@@ -18,9 +20,10 @@ const tokenizePattern = (tokenType: TokenType, pattern, input, current): Tokeniz
 };
 
 const tokenizeNumber = (input: string, current: number): TokenizerResult => {
-    const result = tokenizePattern(TokenType.number, /[0-9\.]/, input, current);
+    const result = tokenizePattern(TokenType.data, /[0-9\.]/, input, current);
     if (result.token) {
         result.token.value = Number(result.token.value);
+        result.token.dataType = DataType.number;
     }
     return result;
 }
@@ -41,18 +44,22 @@ const tokenizeString = (input: string, current: number): TokenizerResult => {
             consumedChars++;
             char = input[current + consumedChars];
         }
-        return new TokenizerResult(consumedChars + 1, { tokenType: TokenType.string, value });
+        return new TokenizerResult(consumedChars + 1, {
+            tokenType: TokenType.data,
+            value,
+            dataType: DataType.string,
+        });
     }
     return new TokenizerResult;
 };
 
 const tokenizeBuiltIn = (input: string, current: number): TokenizerResult =>
-    (input[current] in BuiltInFunc) ? new TokenizerResult(1, { tokenType: TokenType.name, value: input[current] }) : new TokenizerResult;
+    (input[current] in builtInFuncs) ? new TokenizerResult(1, { tokenType: TokenType.name, value: input[current] }) : new TokenizerResult;
 
 const tokenizeNewLine = (input: string, current: number): TokenizerResult =>
     (input[current] === '\n') ? new TokenizerResult(1, { tokenType: TokenType.newLine }) : new TokenizerResult;
 
-const tokenizeFromTrie = (input, current): TokenizerResult => {
+const tokenizeFromTrie = (input: string, current: number): TokenizerResult => {
     let char = input[current];
     let consumedChars = 0;
     let tokenWrap = sequenceTokenTrie.get(char);

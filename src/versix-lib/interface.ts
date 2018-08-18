@@ -1,16 +1,26 @@
+export interface Token {
+    tokenType: TokenType
+    value?: any
+    params?: Token[]
+    refType?: RefType
+    dataType?: DataType
+    start?: number
+    end?: number
+    expression?: Token
+};
+
 export enum TokenType {
     newLine = 'newLine',
-    number = 'number',
-    string = 'string',
-    brack = 'brack',
+    data = 'data',
+    brac = 'brac',
     paren = 'paren',
     curly = 'curly',
     name = 'name',
     op = 'op',
     kw = 'kw',
+    ExpressionStatement = 'ExpressionStatement',
     NumberLiteral = 'NumberLiteral',
     StringLiteral = 'StringLiteral',
-    CallExpression = 'CallExpression',
 }
 
 export enum RefType {
@@ -21,30 +31,27 @@ export enum RefType {
 export enum DataType {
     number = 'number',
     string = 'string',
+    vector = 'vector',
     vector1 = 'vector_1',
     vector2 = 'vector_2',
     vector3 = 'vector_3',
 }
 
-export enum BuiltInFunc {
-    v = 'vector',
-    m = 'matrix',
-}
-
-export interface Token {
-    tokenType: TokenType
-    value?: string | number
-    params?: any[]
-    refType?: RefType
-    dataType?: DataType
-};
-
-export interface TokenNumber extends Token {
+export class TokenNumber implements Token {
     tokenType: TokenType.NumberLiteral
     value: number
 }
 
-export interface Program {
-    type: 'Program'
-    body: Token[]
+export class TokenVector implements Token {
+    tokenType: TokenType.data
+    dataType: DataType.vector
+    value: number[]
 }
+
+export class TokenData implements Token {
+    tokenType: TokenType.data
+    dataType: DataType
+    constructor(public value: any) {}
+}
+
+export type AST = Token[]
